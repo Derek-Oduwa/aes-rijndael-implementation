@@ -122,7 +122,37 @@ void sub_bytes(unsigned char *block, aes_block_size_t block_size) {
  * Row 3: shift left by 3
  */
 void shift_rows(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  int cols;
+  switch (block_size) {
+    case AES_BLOCK_128:
+      cols = 4;
+      break;
+    case AES_BLOCK_256:
+      cols = 8;
+      break;
+    case AES_BLOCK_512:
+      cols = 16;
+      break;
+    default:
+      fprintf(stderr, "Invalid block size in shift_rows\n");
+      exit(1);
+  }
+  
+  // Temporary buffer for one row
+  unsigned char temp[16]; // Max row size for 512-bit blocks
+  
+  // Shift each row
+  for (int row = 1; row < 4; row++) {  // Row 0 doesn't shift
+    // Copy the row to temp
+    for (int col = 0; col < cols; col++) {
+      temp[col] = block[row * cols + col];
+    }
+    
+    // Shift the row left by 'row' positions
+    for (int col = 0; col < cols; col++) {
+      block[row * cols + col] = temp[(col + row) % cols];
+    }
+  }
 }
 
 void mix_columns(unsigned char *block, aes_block_size_t block_size) {
@@ -137,7 +167,35 @@ void invert_sub_bytes(unsigned char *block, aes_block_size_t block_size) {
 }
 
 void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  int cols;
+  switch (block_size) {
+    case AES_BLOCK_128:
+      cols = 4;
+      break;
+    case AES_BLOCK_256:
+      cols = 8;
+      break;
+    case AES_BLOCK_512:
+      cols = 16;
+      break;
+    default:
+      fprintf(stderr, "Invalid block size in invert_shift_rows\n");
+      exit(1);
+  }
+  
+  unsigned char temp[16];
+  
+  // Shift each row RIGHT instead of left
+  for (int row = 1; row < 4; row++) {
+    for (int col = 0; col < cols; col++) {
+      temp[col] = block[row * cols + col];
+    }
+    
+    // Shift right by 'row' positions (same as shift left by cols - row)
+    for (int col = 0; col < cols; col++) {
+      block[row * cols + col] = temp[(col + cols - row) % cols];
+    }
+  }
 }
 
 void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {

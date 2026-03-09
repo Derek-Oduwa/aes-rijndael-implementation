@@ -30,27 +30,21 @@ def test_sub_bytes():
     """Test the sub_bytes function"""
     print("Testing sub_bytes...")
     
-    # Test with 3 random blocks
     import random
-    random.seed(42)  # For reproducibility
+    random.seed(42)
     
     passed = 0
     failed = 0
     
     for test_num in range(3):
-        # Generate random 16-byte block
         test_block = bytes([random.randint(0, 255) for _ in range(16)])
         
-        # Test with C implementation
-        c_block = ctypes.create_string_buffer(test_block)
-        rijndael.sub_bytes(c_block, 0)  # 0 = AES_BLOCK_128
-        c_result = bytes(c_block.raw)
+        c_block = ctypes.create_string_buffer(test_block, 16)
+        rijndael.sub_bytes(c_block, 0)
+        c_result = bytes(c_block.raw[:16])
         
-        # Test with Python implementation
-        # The Python implementation's s_box is the same as our sbox
         py_result = bytes([aes.s_box[b] for b in test_block])
         
-        # Compare results
         if c_result == py_result:
             print(f"  Test {test_num + 1}: PASS")
             passed += 1
@@ -75,18 +69,14 @@ def test_invert_sub_bytes():
     failed = 0
     
     for test_num in range(3):
-        # Generate random 16-byte block
         test_block = bytes([random.randint(0, 255) for _ in range(16)])
         
-        # Test with C implementation
-        c_block = ctypes.create_string_buffer(test_block)
+        c_block = ctypes.create_string_buffer(test_block, 16)
         rijndael.invert_sub_bytes(c_block, 0)
-        c_result = bytes(c_block.raw)
+        c_result = bytes(c_block.raw[:16])
         
-        # Test with Python implementation
         py_result = bytes([aes.inv_s_box[b] for b in test_block])
         
-        # Compare results
         if c_result == py_result:
             print(f"  Test {test_num + 1}: PASS")
             passed += 1
@@ -111,20 +101,16 @@ def test_add_round_key():
     failed = 0
     
     for test_num in range(3):
-        # Generate random 16-byte block and key
         test_block = bytes([random.randint(0, 255) for _ in range(16)])
         test_key = bytes([random.randint(0, 255) for _ in range(16)])
         
-        # Test with C implementation
-        c_block = ctypes.create_string_buffer(test_block)
-        c_key = ctypes.create_string_buffer(test_key)
+        c_block = ctypes.create_string_buffer(test_block, 16)
+        c_key = ctypes.create_string_buffer(test_key, 16)
         rijndael.add_round_key(c_block, c_key, 0)
-        c_result = bytes(c_block.raw)
+        c_result = bytes(c_block.raw[:16])
         
-        # Expected result (XOR)
         py_result = bytes([a ^ b for a, b in zip(test_block, test_key)])
         
-        # Compare results
         if c_result == py_result:
             print(f"  Test {test_num + 1}: PASS")
             passed += 1
@@ -139,6 +125,68 @@ def test_add_round_key():
     print(f"\nadd_round_key: {passed} passed, {failed} failed\n")
     return failed == 0
 
+def test_shift_rows():
+    """Test the shift_rows function"""
+    print("Testing shift_rows...")
+    
+    import random
+    random.seed(45)
+    
+    passed = 0
+    failed = 0
+    
+    for test_num in range(3):
+        test_matrix = [[random.randint(0, 255) for _ in range(4)] for _ in range(4)]
+        test_block = bytes([test_matrix[row][col] for row in range(4) for col in range(4)])
+        
+        c_block = ctypes.create_string_buffer(test_block, 16)
+        rijndael.shift_rows(c_block, 0)
+        c_result = bytes(c_block.raw[:16])
+        
+        expected = bytearray(16)
+        for row in range(4):
+            for col in range(4):
+                expected[row * 4 + col] = test_matrix[row][(col + row) % 4]
+        
+        if c_result == bytes(expected):
+            print(f"  Test {test_num + 1}: PASS")
+            passed += 1
+        else:
+            print(f"  Test {test_num + 1}: FAIL")
+            failed += 1
+    
+    print(f"\nshift_rows: {passed} passed, {failed} failed\n")
+    return failed == 0
+
+def test_invert_shift_rows():
+    """Test the invert_shift_rows function"""
+    print("Testing invert_shift_rows...")
+    
+    import random
+    random.seed(46)
+    
+    passed = 0
+    failed = 0
+    
+    for test_num in range(3):
+        test_matrix = [[random.randint(0, 255) for _ in range(4)] for _ in range(4)]
+        test_block = bytes([test_matrix[row][col] for row in range(4) for col in range(4)])
+        
+        c_block = ctypes.create_string_buffer(test_block, 16)
+        rijndael.shift_rows(c_block, 0)
+        rijndael.invert_shift_rows(c_block, 0)
+        c_result = bytes(c_block.raw[:16])
+        
+        if c_result == test_block:
+            print(f"  Test {test_num + 1}: PASS")
+            passed += 1
+        else:
+            print(f"  Test {test_num + 1}: FAIL")
+            failed += 1
+    
+    print(f"\ninvert_shift_rows: {passed} passed, {failed} failed\n")
+    return failed == 0
+
 if __name__ == "__main__":
     print("="*60)
     print("AES Implementation Unit Tests")
@@ -146,10 +194,11 @@ if __name__ == "__main__":
     
     all_passed = True
     
-    # Test individual functions
     all_passed &= test_sub_bytes()
     all_passed &= test_invert_sub_bytes()
     all_passed &= test_add_round_key()
+    all_passed &= test_shift_rows()
+    all_passed &= test_invert_shift_rows()
     
     print("="*60)
     if all_passed:
