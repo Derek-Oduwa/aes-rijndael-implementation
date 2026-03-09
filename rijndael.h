@@ -29,10 +29,31 @@ unsigned char *aes_encrypt_block(
     unsigned char *key,
     aes_block_size_t block_size);
 
-    
+
 unsigned char *aes_decrypt_block(
     unsigned char *ciphertext,
     unsigned char *key,
     aes_block_size_t block_size);
+
+/* Encryption operations */
+void sub_bytes(unsigned char *block, aes_block_size_t block_size);
+void shift_rows(unsigned char *block, aes_block_size_t block_size);
+void mix_columns(unsigned char *block, aes_block_size_t block_size);
+
+/* Decryption operations */
+void invert_sub_bytes(unsigned char *block, aes_block_size_t block_size);
+void invert_shift_rows(unsigned char *block, aes_block_size_t block_size);
+void invert_mix_columns(unsigned char *block, aes_block_size_t block_size);
+
+/* Shared operations */
+void add_round_key(unsigned char *block, 
+                   unsigned char *round_key,
+                   aes_block_size_t block_size);
+
+/* Key expansion */
+unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size);
+
+/* Helper functions */
+size_t block_size_to_bytes(aes_block_size_t block_size);
 
 #endif
