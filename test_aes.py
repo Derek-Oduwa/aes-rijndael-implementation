@@ -8,7 +8,7 @@ import ctypes
 import sys
 import os
 
-# The Python AES reference implementation to path
+# Add the Python AES reference implementation to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'python-aes'))
 
 try:
@@ -187,6 +187,112 @@ def test_invert_shift_rows():
     print(f"\ninvert_shift_rows: {passed} passed, {failed} failed\n")
     return failed == 0
 
+def test_mix_columns():
+    """Test the mix_columns function"""
+    print("Testing mix_columns...")
+    
+    import random
+    random.seed(47)
+    
+    passed = 0
+    failed = 0
+    
+    for test_num in range(3):
+        # Generate random block
+        test_block = bytes([random.randint(0, 255) for _ in range(16)])
+        
+        # Apply mix_columns with C implementation
+        c_block = ctypes.create_string_buffer(test_block, 16)
+        rijndael.mix_columns(c_block, 0)
+        c_result = bytes(c_block.raw[:16])
+        
+        # Now apply inverse to verify it's working correctly
+        # (mix_columns and invert_mix_columns should be inverses)
+        c_block2 = ctypes.create_string_buffer(c_result, 16)
+        rijndael.invert_mix_columns(c_block2, 0)
+        c_reversed = bytes(c_block2.raw[:16])
+        
+        # The reversed result should match original
+        if c_reversed == test_block:
+            print(f"  Test {test_num + 1}: PASS")
+            passed += 1
+        else:
+            print(f"  Test {test_num + 1}: FAIL")
+            print(f"    Original: {test_block.hex()}")
+            print(f"    After mix and unmix: {c_reversed.hex()}")
+            failed += 1
+    
+    print(f"\nmix_columns: {passed} passed, {failed} failed\n")
+    return failed == 0
+
+def test_invert_mix_columns():
+    """Test the invert_mix_columns function"""
+    print("Testing invert_mix_columns...")
+    
+    import random
+    random.seed(48)
+    
+    passed = 0
+    failed = 0
+    
+    for test_num in range(3):
+        test_block = bytes([random.randint(0, 255) for _ in range(16)])
+        
+        c_block = ctypes.create_string_buffer(test_block, 16)
+        rijndael.mix_columns(c_block, 0)
+        rijndael.invert_mix_columns(c_block, 0)
+        c_result = bytes(c_block.raw[:16])
+        
+        if c_result == test_block:
+            print(f"  Test {test_num + 1}: PASS")
+            passed += 1
+        else:
+            print(f"  Test {test_num + 1}: FAIL")
+            failed += 1
+    
+    print(f"\ninvert_mix_columns: {passed} passed, {failed} failed\n")
+    return failed == 0
+
+def test_full_encryption_decryption():
+    """Test the complete encryption and decryption"""
+    print("Testing full encryption and decryption...")
+    
+    import random
+    random.seed(100)
+    
+    passed = 0
+    failed = 0
+    
+    for test_num in range(3):
+        plaintext = bytes([random.randint(0, 255) for _ in range(16)])
+        key = bytes([random.randint(0, 255) for _ in range(16)])
+        
+        c_plaintext = ctypes.create_string_buffer(plaintext, 16)
+        c_key = ctypes.create_string_buffer(key, 16)
+        
+        rijndael.aes_encrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+        rijndael.aes_decrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+        
+        c_ciphertext_ptr = rijndael.aes_encrypt_block(c_plaintext, c_key, 0)
+        c_ciphertext = bytes(ctypes.cast(c_ciphertext_ptr, ctypes.POINTER(ctypes.c_ubyte * 16)).contents)
+        
+        c_ciphertext_buf = ctypes.create_string_buffer(c_ciphertext, 16)
+        c_decrypted_ptr = rijndael.aes_decrypt_block(c_ciphertext_buf, c_key, 0)
+        c_decrypted = bytes(ctypes.cast(c_decrypted_ptr, ctypes.POINTER(ctypes.c_ubyte * 16)).contents)
+        
+        if c_decrypted == plaintext:
+            print(f"  Test {test_num + 1}: PASS")
+            passed += 1
+        else:
+            print(f"  Test {test_num + 1}: FAIL")
+            print(f"    Plaintext:  {plaintext.hex()}")
+            print(f"    Ciphertext: {c_ciphertext.hex()}")
+            print(f"    Decrypted:  {c_decrypted.hex()}")
+            failed += 1
+    
+    print(f"\nfull encryption/decryption: {passed} passed, {failed} failed\n")
+    return failed == 0
+
 if __name__ == "__main__":
     print("="*60)
     print("AES Implementation Unit Tests")
@@ -199,6 +305,9 @@ if __name__ == "__main__":
     all_passed &= test_add_round_key()
     all_passed &= test_shift_rows()
     all_passed &= test_invert_shift_rows()
+    all_passed &= test_mix_columns()
+    all_passed &= test_invert_mix_columns()
+    all_passed &= test_full_encryption_decryption()
     
     print("="*60)
     if all_passed:

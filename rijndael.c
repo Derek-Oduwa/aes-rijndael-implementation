@@ -155,15 +155,79 @@ void shift_rows(unsigned char *block, aes_block_size_t block_size) {
   }
 }
 
+/**
+ * Galois Field multiplication by 2
+ */
+static unsigned char gmul2(unsigned char a) {
+  return (a << 1) ^ (((a >> 7) & 1) * 0x1b);
+}
+
+/**
+ * Galois Field multiplication by 3
+ */
+static unsigned char gmul3(unsigned char a) {
+  return gmul2(a) ^ a;
+}
+
+/**
+ * Galois Field multiplication (general case)
+ */
+static unsigned char gmul(unsigned char a, unsigned char b) {
+  unsigned char p = 0;
+  for (int i = 0; i < 8; i++) {
+    if (b & 1) {
+      p ^= a;
+    }
+    unsigned char hi_bit_set = (a & 0x80);
+    a <<= 1;
+    if (hi_bit_set) {
+      a ^= 0x1b;
+    }
+    b >>= 1;
+  }
+  return p;
+}
+
 void mix_columns(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  int cols;
+  switch (block_size) {
+    case AES_BLOCK_128:
+      cols = 4;
+      break;
+    case AES_BLOCK_256:
+      cols = 8;
+      break;
+    case AES_BLOCK_512:
+      cols = 16;
+      break;
+    default:
+      fprintf(stderr, "Invalid block size in mix_columns\n");
+      exit(1);
+  }
+  
+  unsigned char temp[4];
+  
+  for (int col = 0; col < cols; col++) {
+    temp[0] = block[0 * cols + col];
+    temp[1] = block[1 * cols + col];
+    temp[2] = block[2 * cols + col];
+    temp[3] = block[3 * cols + col];
+    
+    block[0 * cols + col] = gmul2(temp[0]) ^ gmul3(temp[1]) ^ temp[2] ^ temp[3];
+    block[1 * cols + col] = temp[0] ^ gmul2(temp[1]) ^ gmul3(temp[2]) ^ temp[3];
+    block[2 * cols + col] = temp[0] ^ temp[1] ^ gmul2(temp[2]) ^ gmul3(temp[3]);
+    block[3 * cols + col] = gmul3(temp[0]) ^ temp[1] ^ temp[2] ^ gmul2(temp[3]);
+  }
 }
 
 /*
  * Operations used when decrypting a block
  */
 void invert_sub_bytes(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  size_t bytes = block_size_to_bytes(block_size);
+  for (size_t i = 0; i < bytes; i++) {
+    block[i] = inv_sbox[block[i]];
+  }
 }
 
 void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
@@ -199,16 +263,52 @@ void invert_shift_rows(unsigned char *block, aes_block_size_t block_size) {
 }
 
 void invert_mix_columns(unsigned char *block, aes_block_size_t block_size) {
-  // TODO: Implement me!
+  int cols;
+  switch (block_size) {
+    case AES_BLOCK_128:
+      cols = 4;
+      break;
+    case AES_BLOCK_256:
+      cols = 8;
+      break;
+    case AES_BLOCK_512:
+      cols = 16;
+      break;
+    default:
+      fprintf(stderr, "Invalid block size in invert_mix_columns\n");
+      exit(1);
+  }
+  
+  unsigned char temp[4];
+  
+  for (int col = 0; col < cols; col++) {
+    temp[0] = block[0 * cols + col];
+    temp[1] = block[1 * cols + col];
+    temp[2] = block[2 * cols + col];
+    temp[3] = block[3 * cols + col];
+    
+    block[0 * cols + col] = gmul(temp[0], 0x0e) ^ gmul(temp[1], 0x0b) ^ 
+                            gmul(temp[2], 0x0d) ^ gmul(temp[3], 0x09);
+    block[1 * cols + col] = gmul(temp[0], 0x09) ^ gmul(temp[1], 0x0e) ^ 
+                            gmul(temp[2], 0x0b) ^ gmul(temp[3], 0x0d);
+    block[2 * cols + col] = gmul(temp[0], 0x0d) ^ gmul(temp[1], 0x09) ^ 
+                            gmul(temp[2], 0x0e) ^ gmul(temp[3], 0x0b);
+    block[3 * cols + col] = gmul(temp[0], 0x0b) ^ gmul(temp[1], 0x0d) ^ 
+                            gmul(temp[2], 0x09) ^ gmul(temp[3], 0x0e);
+  }
 }
 
 /*
  * This operation is shared between encryption and decryption
  */
+
 void add_round_key(unsigned char *block, 
                    unsigned char *round_key,
                    aes_block_size_t block_size) {
-  // TODO: Implement me!
+  size_t bytes = block_size_to_bytes(block_size);
+  for (size_t i = 0; i < bytes; i++) {
+    block[i] ^= round_key[i];
+  }
 }
 
 /*
@@ -216,29 +316,156 @@ void add_round_key(unsigned char *block,
  * which is a single 128-bit key, it should return a 176-byte
  * vector, containing the 11 round keys one after the other
  */
+/**
+ * RotWord - rotate a 4-byte word left by one byte
+ * [a0, a1, a2, a3] becomes [a1, a2, a3, a0]
+ */
+static void rot_word(unsigned char *word) {
+  unsigned char temp = word[0];
+  word[0] = word[1];
+  word[1] = word[2];
+  word[2] = word[3];
+  word[3] = temp;
+}
+
+/**
+ * SubWord - apply S-box to each byte in a 4-byte word
+ */
+static void sub_word(unsigned char *word) {
+  word[0] = sbox[word[0]];
+  word[1] = sbox[word[1]];
+  word[2] = sbox[word[2]];
+  word[3] = sbox[word[3]];
+}
+
+/**
+ * Key expansion - expand the cipher key into round keys
+ * For 128-bit: 16 bytes -> 176 bytes (11 round keys)
+ * For 256-bit: 32 bytes -> 352 bytes (11 round keys)
+ * For 512-bit: 64 bytes -> 704 bytes (11 round keys)
+ */
 unsigned char *expand_key(unsigned char *cipher_key, aes_block_size_t block_size) {
-  // TODO: Implement me!
-  return 0;
+  size_t key_bytes = block_size_to_bytes(block_size);
+  size_t expanded_size = key_bytes * 11; // 11 round keys for all block sizes
+  
+  unsigned char *expanded = (unsigned char *)malloc(expanded_size);
+  if (!expanded) {
+    fprintf(stderr, "Memory allocation failed in expand_key\n");
+    exit(1);
+  }
+  
+  // Copy the original key as the first round key
+  memcpy(expanded, cipher_key, key_bytes);
+  
+  // Number of 32-bit words in the key
+  int nk = key_bytes / 4;  // 4 for 128-bit, 8 for 256-bit, 16 for 512-bit
+  
+  // Total number of 32-bit words needed (11 round keys)
+  int total_words = (key_bytes / 4) * 11;
+  
+  unsigned char temp[4];
+  
+  // Generate the rest of the round keys
+  for (int i = nk; i < total_words; i++) {
+    // Copy the previous word
+    memcpy(temp, &expanded[(i - 1) * 4], 4);
+    
+    // Every Nk words, apply special transformation
+    if (i % nk == 0) {
+      rot_word(temp);
+      sub_word(temp);
+      temp[0] ^= rcon[i / nk];
+    }
+    // For 256-bit and 512-bit keys, apply SubWord at certain positions
+    else if (nk > 6 && i % nk == 4) {
+      sub_word(temp);
+    }
+    
+    // XOR with word Nk positions back
+    for (int j = 0; j < 4; j++) {
+      expanded[i * 4 + j] = expanded[(i - nk) * 4 + j] ^ temp[j];
+    }
+  }
+  
+  return expanded;
 }
 
 /*
  * The implementations of the functions declared in the
  * header file should go here
  */
-unsigned char *aes_encrypt_block(unsigned char *plaintext,
+/**
+ * AES Encryption - main encryption function
+ */
+
+ unsigned char *aes_encrypt_block(unsigned char *plaintext,
                                  unsigned char *key,
                                  aes_block_size_t block_size) {
-  // TODO: Implement me!
-  unsigned char *output =
-      (unsigned char *)malloc(sizeof(unsigned char) * block_size_to_bytes(block_size));
+  size_t bytes = block_size_to_bytes(block_size);
+  
+  // Allocate memory for the ciphertext
+  unsigned char *output = (unsigned char *)malloc(bytes);
+  if (!output) {
+    fprintf(stderr, "Memory allocation failed in aes_encrypt_block\n");
+    exit(1);
+  }
+  
+  // Copy plaintext to output (we'll work on it in place)
+  memcpy(output, plaintext, bytes);
+  
+  // Expand the key
+  unsigned char *round_keys = expand_key(key, block_size);
+  
+  // Round 0: AddRoundKey only
+  add_round_key(output, &round_keys[0], block_size);
+  
+  // Rounds 1-9: SubBytes, ShiftRows, MixColumns, AddRoundKey
+  for (int round = 1; round < 10; round++) {
+    sub_bytes(output, block_size);
+    shift_rows(output, block_size);
+    mix_columns(output, block_size);
+    add_round_key(output, &round_keys[round * bytes], block_size);
+  }
+  
+  // Round 10: SubBytes, ShiftRows, AddRoundKey (no MixColumns)
+  sub_bytes(output, block_size);
+  shift_rows(output, block_size);
+  add_round_key(output, &round_keys[10 * bytes], block_size);
+  
+  free(round_keys);
   return output;
 }
-
 unsigned char *aes_decrypt_block(unsigned char *ciphertext,
                                  unsigned char *key,
                                  aes_block_size_t block_size) {
-  // TODO: Implement me!
-  unsigned char *output =
-      (unsigned char *)malloc(sizeof(unsigned char) * block_size_to_bytes(block_size));
+  size_t bytes = block_size_to_bytes(block_size);
+  
+  unsigned char *output = (unsigned char *)malloc(bytes);
+  if (!output) {
+    fprintf(stderr, "Memory allocation failed in aes_decrypt_block\n");
+    exit(1);
+  }
+  
+  memcpy(output, ciphertext, bytes);
+  
+  unsigned char *round_keys = expand_key(key, block_size);
+  
+  // Round 10: AddRoundKey, InvShiftRows, InvSubBytes
+  add_round_key(output, &round_keys[10 * bytes], block_size);
+  invert_shift_rows(output, block_size);
+  invert_sub_bytes(output, block_size);
+  
+  // Rounds 9-1
+  for (int round = 9; round >= 1; round--) {
+    add_round_key(output, &round_keys[round * bytes], block_size);
+    invert_mix_columns(output, block_size);
+    invert_shift_rows(output, block_size);
+    invert_sub_bytes(output, block_size);
+  }
+  
+  // Round 0
+  add_round_key(output, &round_keys[0], block_size);
+  
+  free(round_keys);
   return output;
 }
