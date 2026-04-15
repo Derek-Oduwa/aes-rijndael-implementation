@@ -293,6 +293,36 @@ def test_full_encryption_decryption():
     print(f"\nfull encryption/decryption: {passed} passed, {failed} failed\n")
     return failed == 0
 
+def test_encryption_256bit():
+    """Test encryption with 256-bit blocks"""
+    print("Testing 256-bit encryption...")
+    
+    import random
+    random.seed(200)
+    
+    plaintext = bytes([random.randint(0, 255) for _ in range(32)])
+    key = bytes([random.randint(0, 255) for _ in range(32)])
+    
+    c_plaintext = ctypes.create_string_buffer(plaintext, 32)
+    c_key = ctypes.create_string_buffer(key, 32)
+    
+    rijndael.aes_encrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+    rijndael.aes_decrypt_block.restype = ctypes.POINTER(ctypes.c_ubyte)
+    
+    c_ciphertext_ptr = rijndael.aes_encrypt_block(c_plaintext, c_key, 1)  # 1 = AES_BLOCK_256
+    c_ciphertext = bytes(ctypes.cast(c_ciphertext_ptr, ctypes.POINTER(ctypes.c_ubyte * 32)).contents)
+    
+    c_ciphertext_buf = ctypes.create_string_buffer(c_ciphertext, 32)
+    c_decrypted_ptr = rijndael.aes_decrypt_block(c_ciphertext_buf, c_key, 1)
+    c_decrypted = bytes(ctypes.cast(c_decrypted_ptr, ctypes.POINTER(ctypes.c_ubyte * 32)).contents)
+    
+    if c_decrypted == plaintext:
+        print("  256-bit test: PASS\n")
+        return True
+    else:
+        print("  256-bit test: FAIL\n")
+        return False
+
 if __name__ == "__main__":
     print("="*60)
     print("AES Implementation Unit Tests")
