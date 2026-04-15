@@ -1,17 +1,15 @@
-# AES (Rijndael) Implementation in C
+AES (Rijndael) Implementation in C
 
-**Author:** Derek Oduwa (C21371446)
-**Course:** Secure Systems Development  
-**Assignment:** Assignment 2 - AES Implementation
+Author: Derek Oduwa (C21371446)
+Course: Secure Systems Development  
+Assignment: Assignment 2 - AES Implementation
 
-## Overview
+Overview
 
 This project implements the AES (Advanced Encryption Standard) encryption algorithm in C, supporting 128-bit, 256-bit, and 512-bit block sizes.
 
-## Project Structure
+Project Structure
 
-```
-.
 ├── rijndael.h          # Header file with function declarations
 ├── rijndael.c          # Implementation of AES algorithm
 ├── main.c              # Demo program
@@ -19,43 +17,43 @@ This project implements the AES (Advanced Encryption Standard) encryption algori
 ├── Makefile            # Build configuration
 ├── python-aes/         # Reference Python implementation (submodule)
 └── .github/workflows/  # CI/CD pipeline
-```
 
-## Building
 
-```bash
+Building
+
+bash
 make clean
 make
-```
+
 
 This will create:
 - `main` - Demo executable
 - `rijndael.so` - Shared library for Python tests
 
-## Running Tests
+Running Tests
 
-```bash
+bash
 python3 test_aes.py
-```
 
-## Implementation Status
 
-### Completed
+Implementation Status
+
+Completed
 - [x] S-box and Inverse S-box lookup tables
-- [x] `sub_bytes()` - Byte substitution
-- [x] `invert_sub_bytes()` - Inverse byte substitution
-- [x] `add_round_key()` - Round key addition
+- [x] `sub_bytes()` - Byte substitution (2 marks)
+- [x] `invert_sub_bytes()` - Inverse byte substitution (2 marks)
+- [x] `shift_rows()` - Row shifting (2 marks)
+- [x] `invert_shift_rows()` - Inverse row shifting (2 marks)
+- [x] `mix_columns()` - Column mixing (2 marks)
+- [x] `invert_mix_columns()` - Inverse column mixing (2 marks)
+- [x] `add_round_key()` - Round key addition (1 mark)
+- [x] `expand_key()` - Key expansion (5 marks)
+- [x] `aes_encrypt_block()` - Full encryption (3 marks)
+- [x] `aes_decrypt_block()` - Full decryption (3 marks)
+- [x] Unit tests with Python ctypes
+- [x] GitHub Actions CI/CD pipeline
 
-### In Progress
-- [ ] `shift_rows()` - Row shifting
-- [ ] `invert_shift_rows()` - Inverse row shifting
-- [ ] `mix_columns()` - Column mixing
-- [ ] `invert_mix_columns()` - Inverse column mixing
-- [ ] `expand_key()` - Key expansion
-- [ ] `aes_encrypt_block()` - Full encryption
-- [ ] `aes_decrypt_block()` - Full decryption
-
-## Development Workflow
+Development Workflow
 
 1. Implement a function in `rijndael.c`
 2. Add unit tests in `test_aes.py`
@@ -63,7 +61,7 @@ python3 test_aes.py
 4. Commit changes
 5. GitHub Actions will automatically build and test
 
-## Resources
+Resources
 
 - [FIPS 197 - AES Specification](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf)
 - [Reference Python Implementation](https://github.com/boppreh/aes)
