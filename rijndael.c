@@ -103,9 +103,15 @@ char *message(char n) {
   return output;
 }
 
-/*
- * SubBytes - substitute each byte using the S-box
- * This is a non-linear transformation that provides confusion
+/**
+ * SubBytes Transformation
+ * 
+ * This function performs a non-linear byte substitution on each byte of the state
+ * using the Rijndael S-box. The S-box is a lookup table that provides confusion
+ * in the cipher, making it resistant to linear and differential cryptanalysis.
+ * 
+ * @param block Pointer to the state block to transform
+ * @param block_size The size of the block (128, 256, or 512 bits)
  */
 void sub_bytes(unsigned char *block, aes_block_size_t block_size) {
     size_t bytes = block_size_to_bytes(block_size);
