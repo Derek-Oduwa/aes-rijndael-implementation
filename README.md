@@ -10,13 +10,13 @@ This project implements the AES (Advanced Encryption Standard) encryption algori
 
 Project Structure
 
-├── rijndael.h          # Header file with function declarations
-├── rijndael.c          # Implementation of AES algorithm
-├── main.c              # Demo program
-├── test_aes.py         # Python unit tests
-├── Makefile            # Build configuration
-├── python-aes/         # Reference Python implementation (submodule)
-└── .github/workflows/  # CI/CD pipeline
+├── rijndael.h          Header file with function declarations
+├── rijndael.c          Implementation of AES algorithm
+├── main.c              Demo program
+├── test_aes.py         Python unit tests
+├── Makefile            Build configuration
+├── python-aes/         Reference Python implementation (submodule)
+└── .github/workflows/  CI/CD pipeline
 
 
 Building
