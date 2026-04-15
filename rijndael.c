@@ -1,9 +1,19 @@
 /*
  * Derek Oduwa
- * C21371446
- * Assignment 2
- * AES(Rijndael) implementation
- * This library implements the AES encryption and decryption algorithms
+ * Student Number: C21371446
+ * 
+ * AES (Rijndael) Implementation - Assignment 2
+ * Secure Systems Development
+ * 
+ * This file implements the Advanced Encryption Standard (AES) cipher,
+ * also known as Rijndael. It supports 128-bit, 256-bit, and 512-bit
+ * block sizes with full encryption and decryption capabilities.
+ * 
+ * Key components:
+ * - S-box and inverse S-box lookup tables
+ * - SubBytes, ShiftRows, MixColumns transformations
+ * - Key expansion algorithm (Rijndael key schedule)
+ * - Complete encryption and decryption functions
  */
 
 #include <stdio.h>

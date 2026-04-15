@@ -1,11 +1,12 @@
 /*
  * Derek Oduwa
- * C21371446
+ * Student Number: C21371446
  * 
- * Assignment 2
- * AES(Rijndael) implementation
- * This library implements the AES encryption and decryption algorithms
- * for block sizes of 128, 256, and 512 bits. 
+ * AES (Rijndael) Header File
+ * 
+ * This header file declares the public interface for the AES implementation.
+ * Users of this library can encrypt and decrypt data blocks using the
+ * aes_encrypt_block() and aes_decrypt_block() functions.
  */
 
 #ifndef RIJNDAEL_H
