@@ -1,7 +1,7 @@
 /*
  * Derek Oduwa
  * C21371446
- * 
+ * Assignment 2
  * AES(Rijndael) implementation
  * This library implements the AES encryption and decryption algorithms
  */
